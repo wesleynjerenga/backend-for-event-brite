@@ -1,8 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from './generated/prisma';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -118,7 +119,19 @@ app.post('/api/register', async (req: Request, res: Response) => {
   }
 });
 
-// User login endpoint
+// JWT authentication middleware
+function authenticateToken(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+  jwt.verify(token, process.env.JWT_SECRET as string, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    (req as any).user = user;
+    next();
+  });
+}
+
+// Update login endpoint to return JWT
 app.post('/api/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -133,15 +146,31 @@ app.post('/api/login', async (req: Request, res: Response) => {
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    res.json({ message: 'Login successful', user: { id: user.id, email: user.email } });
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '1h' }
+    );
+    res.json({ message: 'Login successful', token });
   } catch (error) {
     res.status(500).json({ error: 'Failed to login' });
   }
 });
 
+// Example protected route
+app.get('/api/protected', authenticateToken, (req: Request, res: Response) => {
+  res.json({ message: 'This is a protected route', user: (req as any).user });
+});
+
 // Sample test endpoint for demonstration
 app.get('/api/test', (req: Request, res: Response) => {
   res.json({ message: 'Test endpoint working!' });
+});
+
+// Global error handler
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
 });
 
 app.listen(PORT, () => {
