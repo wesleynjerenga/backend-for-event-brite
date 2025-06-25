@@ -40,4 +40,12 @@ Copy `.env.example` to `.env` and update the values as needed:
 ```
 PORT=4000
 DATABASE_URL="file:./dev.db"
+```
+
+## Testing
+
+You can test the sample endpoint with:
+
+```bash
+curl http://localhost:4000/api/test
 ``` 
