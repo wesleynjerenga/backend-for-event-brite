@@ -57,3 +57,9 @@ curl http://localhost:4000/api/test
 3. Make your changes and commit them
 4. Push to your fork and open a pull request
 5. Run tests before submitting 
+
+## Project Structure
+
+- `src/index.ts`: Main server entry point
+- `prisma/`: Database schema and migrations
+- `README.md`: Project documentation 
