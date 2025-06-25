@@ -48,4 +48,12 @@ You can test the sample endpoint with:
 
 ```bash
 curl http://localhost:4000/api/test
-``` 
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a new branch for your feature or bugfix
+3. Make your changes and commit them
+4. Push to your fork and open a pull request
+5. Run tests before submitting 
