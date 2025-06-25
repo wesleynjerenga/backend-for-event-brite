@@ -29,11 +29,21 @@ app.get('/api/events', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// CREATE event
-app.post('/api/events', async (req: Request, res: Response): Promise<void> => {
-  const { title, description, date, location } = req.body;
-  if (!title || !date || !location) {
-    res.status(400).json({ error: 'title, date, and location are required' });
+// Admin check middleware
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const user = (req as any).user;
+  if (!user || user.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+  next();
+}
+
+// CREATE event (admin only)
+app.post('/api/events', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { title, description, date, location, ticketsTotal, ticketDescription, imageUrl } = req.body;
+  if (!title || !date || !location || !ticketsTotal) {
+    res.status(400).json({ error: 'title, date, location, and ticketsTotal are required' });
     return;
   }
   try {
@@ -43,11 +53,18 @@ app.post('/api/events', async (req: Request, res: Response): Promise<void> => {
         description,
         date: new Date(date),
         location,
+        ticketsTotal,
+        ticketsLeft: ticketsTotal,
+        ticketDescription,
+        imageUrl,
+        createdById: (req as any).user.userId
       },
     });
     res.status(201).json(event);
+    return;
   } catch (error) {
     res.status(500).json({ error: 'Failed to create event' });
+    return;
   }
 });
 
@@ -81,14 +98,16 @@ app.put('/api/events/:id', async (req: Request<{ id: string }>, res: Response): 
   }
 });
 
-// DELETE event
-app.delete('/api/events/:id', async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+// DELETE event (admin only)
+app.delete('/api/events/:id', authenticateToken, requireAdmin, async (req: Request<{ id: string }>, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
     await prisma.event.delete({ where: { id: Number(id) } });
     res.status(204).end();
+    return;
   } catch (error) {
     res.status(404).json({ error: 'Event not found or failed to delete' });
+    return;
   }
 });
 
@@ -131,7 +150,7 @@ function authenticateToken(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-// Update login endpoint to return JWT
+// Update login endpoint to return JWT with role
 app.post('/api/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -147,7 +166,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: '1h' }
     );
@@ -165,6 +184,20 @@ app.get('/api/protected', authenticateToken, (req: Request, res: Response) => {
 // Sample test endpoint for demonstration
 app.get('/api/test', (req: Request, res: Response) => {
   res.json({ message: 'Test endpoint working!' });
+});
+
+// Promote user to admin (admin only)
+app.post('/api/promote/:id', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const user = await prisma.user.update({
+      where: { id: Number(id) },
+      data: { role: 'ADMIN' }
+    });
+    res.json({ message: 'User promoted to admin', user: { id: user.id, email: user.email, role: user.role } });
+  } catch (error) {
+    res.status(404).json({ error: 'User not found or failed to promote' });
+  }
 });
 
 // Global error handler
