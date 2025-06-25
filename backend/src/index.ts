@@ -90,6 +90,11 @@ app.delete('/api/events/:id', async (req: Request<{ id: string }>, res: Response
   }
 });
 
+// Sample test endpoint for demonstration
+app.get('/api/test', (req: Request, res: Response) => {
+  res.json({ message: 'Test endpoint working!' });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }); 

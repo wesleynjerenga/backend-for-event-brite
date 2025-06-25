@@ -34,4 +34,10 @@ npm start
 ```
 
 ## Environment Variables
-- `PORT`: Port to run the server (default: 4000) 
+
+Copy `.env.example` to `.env` and update the values as needed:
+
+```
+PORT=4000
+DATABASE_URL="file:./dev.db"
+``` 
